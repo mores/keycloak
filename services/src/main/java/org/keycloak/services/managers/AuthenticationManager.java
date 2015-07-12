@@ -555,33 +555,34 @@ public class AuthenticationManager {
     }
 
     protected static AuthResult verifyIdentityToken(KeycloakSession session, RealmModel realm, UriInfo uriInfo, ClientConnection connection, boolean checkActive, String tokenString, HttpHeaders headers) {
+	logger.warn( "verifyIdentityToken" );
         try {
             AccessToken token = RSATokenVerifier.verifyToken(tokenString, realm.getPublicKey(), Urls.realmIssuer(uriInfo.getBaseUri(), realm.getName()), checkActive);
             if (checkActive) {
                 if (!token.isActive() || token.getIssuedAt() < realm.getNotBefore()) {
-                    logger.debug("identity cookie expired");
+                    logger.warn("identity cookie expired");
                     return null;
                 } else {
-                    logger.debugv("token active - active: {0}, issued-at: {1}, not-before: {2}", token.isActive(), token.getIssuedAt(), realm.getNotBefore());
+                    logger.warnv("token active - active: {0}, issued-at: {1}, not-before: {2}", token.isActive(), token.getIssuedAt(), realm.getNotBefore());
                 }
             }
 
             UserModel user = session.users().getUserById(token.getSubject(), realm);
             if (user == null || !user.isEnabled() ) {
-                logger.debug("Unknown user in identity token");
+                logger.warn("Unknown user in identity token");
                 return null;
             }
 
             UserSessionModel userSession = session.sessions().getUserSession(realm, token.getSessionState());
             if (!isSessionValid(realm, userSession)) {
                 if (userSession != null) backchannelLogout(session, realm, userSession, uriInfo, connection, headers, true);
-                logger.debug("User session not active");
+                logger.warn("User session not active");
                 return null;
             }
 
             return new AuthResult(user, userSession, token);
         } catch (VerificationException e) {
-            logger.debug("Failed to verify identity token", e);
+            logger.warn("Failed to verify identity token", e);
         }
         return null;
     }
